@@ -33,6 +33,7 @@ public class Main {
                 String reponse = "+PONG\r\n";
                 outputStream.write(reponse.getBytes());
                 outputStream.flush();
+                break;
 
             }
 

@@ -50,7 +50,7 @@ public class ClientHandler implements Runnable {
                                         .getBytes());
                     }
                 } else if (request.startsWith("*")) {
-                    String[] parts = request.split("\r\n");
+                    String[] parts = request.split(" ");
                     if (parts.length > 0) {
                         String key = parts[1];
                         String value = parts[2];
@@ -58,7 +58,7 @@ public class ClientHandler implements Runnable {
                         System.out.println(map.get(key) + " sssssssssssssssss");
                         socket.getOutputStream().write("+OK\r\n".getBytes());
                     }
-               
+
 
                 }
             }

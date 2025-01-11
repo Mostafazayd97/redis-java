@@ -53,6 +53,14 @@ public class ClientHandler implements Runnable {
                                 String.format("n%s\r\n", value)
                                         .getBytes());
                     }
+                } else if (request.startsWith("*")) {
+                    String[] parts = request.split("\r\n");
+                    String key = parts[1];
+                    String value = parts[2];
+                    map.put(key, value);
+                    System.out.println(map.get(key)+  " sssssssssssssssss");
+                    socket.getOutputStream().write("+OK\r\n".getBytes());
+
                 }
             }
         } catch (IOException e) {

@@ -34,6 +34,7 @@ public class ClientHandler implements Runnable {
                                     .getBytes());
                 }
             else if (request.startsWith("SET")) {
+                    System.out.println(request + " request");
                    String[] parts = request.split(" ");
                     String key = parts[0];
                     String value = parts[1];

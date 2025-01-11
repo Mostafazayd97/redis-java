@@ -48,17 +48,15 @@ public class ClientHandler implements Runnable {
 
                     socket.getOutputStream().flush();
                 } else if (request.startsWith("GET")) {
-                    String key = input.readLine();
-
-                    key = input.readLine();
-
+                    String key = request.split(" ")[1];
                     String value = map.get(key);
-
-                    socket.getOutputStream().write(
-
-                            String.format("$%d\r\n%s\r\n", value.length(), value).getBytes());
-
-                    socket.getOutputStream().flush();
+                    if (value == null) {
+                        socket.getOutputStream().write("$-1\r\n".getBytes());
+                    } else {
+                        socket.getOutputStream().write(
+                                String.format("n%s\r\n", value)
+                                        .getBytes());
+                    }
                 }
             }
         } catch (IOException e) {

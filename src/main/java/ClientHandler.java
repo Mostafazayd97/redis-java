@@ -44,7 +44,6 @@ public class ClientHandler implements Runnable {
                 }
 
             else if (request.startsWith("GET")) {
-
                     String key = request.split(" ")[1];
                     String value = map.get(key);
                     if (value == null) {

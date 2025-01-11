@@ -51,7 +51,7 @@ public class ClientHandler implements Runnable {
                         socket.getOutputStream().write("$-1\r\n".getBytes());
                     } else {
                         socket.getOutputStream().write(
-                                String.format("\r\n%s\r\n", value)
+                                String.format("n%s\r\n", value)
                                         .getBytes());
                     }
                 }

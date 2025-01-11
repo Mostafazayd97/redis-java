@@ -1,6 +1,4 @@
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.Socket;
 
 public class ClientHandler implements Runnable {
@@ -13,39 +11,75 @@ public class ClientHandler implements Runnable {
 
     @Override
     public void run() {
+        InputStream inputStream = null;
+        OutputStream outputStream = null;
 
         try {
-            InputStream inputStream = socket.getInputStream();
-            OutputStream outputStream = socket.getOutputStream();
+            // Step 1: Get the input and output streams of the client socket
+            inputStream = socket.getInputStream();
+            outputStream = socket.getOutputStream();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            // Step 2: Handle client communication in a loop
+            byte[] buffer = new byte[1024];
 
             while (true) {
-                byte buffer[] = new byte[1024];
+                // Read data from the client
                 int bytesRead = inputStream.read(buffer);
                 if (bytesRead == -1) {
+                    // If the client disconnects, break the loop
+                    System.out.println("Client disconnected.");
                     break;
                 }
-                String request = new String(buffer, 0, bytesRead);
 
-                System.out.println(request + "from client");
+                // Convert the client input to a string
+                String request = reader.readLine();
+                System.out.println("Received from client: " + request);
 
+                // Step 3: Parse the RESP command
+                String[] parts = request.split("\r\n");
+                if (parts.length >= 1 && parts[0].startsWith("*")) {
+                    // Handle RESP array commands
+                    if (parts[0].equals("*1") && parts[2].equalsIgnoreCase("$4") && parts[3].equalsIgnoreCase("PING")) {
+                        // Handle PING command
+                        String response = "+PONG\r\n"; // RESP simple string
+                        outputStream.write(response.getBytes());
+                        outputStream.flush();
+                        System.out.println("Sent response: " + response.trim());
+                        continue; // Skip the rest of the loop
+                    } else if (parts[0].equals("*2") && parts[2].equalsIgnoreCase("$4") && parts[3].equalsIgnoreCase("ECHO")) {
+                        // Handle ECHO command
+                        String argument = parts[5];
+                        String response = "$" + argument.length() + "\r\n" + argument + "\r\n"; // RESP bulk string
+                        outputStream.write(response.getBytes());
+                        outputStream.flush();
+                        System.out.println("Sent response: " + response.trim());
+                        continue; // Skip the rest of the loop
+                    }
+                }
 
-                String reponse = "+PONG\r\n";
-                outputStream.write(reponse.getBytes());
+                // Step 4: Handle unknown commands
+                String response = "-ERR unknown command\r\n"; // RESP error
+                outputStream.write(response.getBytes());
                 outputStream.flush();
-
+                System.out.println("Sent response: " + response.trim());
             }
-        }  catch (IOException e) {
+        } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());
         } finally {
-            // Step 4: Close the client socket
+            // Step 5: Close the streams and socket
             try {
+                if (inputStream != null) {
+                    inputStream.close();
+                }
+                if (outputStream != null) {
+                    outputStream.close();
+                }
                 if (socket != null) {
                     socket.close();
                 }
             } catch (IOException e) {
-                System.out.println("IOException: " + e.getMessage());
+                System.out.println("IOException while closing resources: " + e.getMessage());
             }
         }
-
     }
 }

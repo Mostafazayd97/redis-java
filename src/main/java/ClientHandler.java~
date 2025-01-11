@@ -1,85 +1,63 @@
-import java.io.*;
+import java.io.BufferedReader;
+
+import java.io.IOException;
+
+import java.io.InputStreamReader;
+
 import java.net.Socket;
+import java.util.HashMap;
 
 public class ClientHandler implements Runnable {
 
-    private Socket socket;
+    private final Socket socket;
+    public static HashMap<String, String> map = new HashMap<>();
 
-    public ClientHandler(Socket socket) {
-        this.socket = socket;
-    }
+    public ClientHandler(Socket socket) { this.socket = socket; }
 
     @Override
+
     public void run() {
-        InputStream inputStream = null;
-        OutputStream outputStream = null;
-
-        try {
-            // Step 1: Get the input and output streams of the client socket
-            inputStream = socket.getInputStream();
-            outputStream = socket.getOutputStream();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-            // Step 2: Handle client communication in a loop
-            byte[] buffer = new byte[1024];
-
+        try (BufferedReader input = new BufferedReader(
+                new InputStreamReader(socket.getInputStream()))) {
             while (true) {
-                // Read data from the client
-                int bytesRead = inputStream.read(buffer);
-                if (bytesRead == -1) {
-                    // If the client disconnects, break the loop
-                    System.out.println("Client disconnected.");
-                    break;
+                String request = input.readLine();
+                if (request == null) {
+                    continue;
+                }
+                if ("PING".equals(request)) {
+                    socket.getOutputStream().write("+PONG\r\n".getBytes());
+                } else if ("ECHO".equalsIgnoreCase(request)) {
+                    input.readLine();
+                    String message = input.readLine();
+                    socket.getOutputStream().write(
+                            String.format("\r\n%s\r\n", message)
+                                    .getBytes());
+                }
+            else if (request.startsWith("SET")) {
+                   String[] parts = request.split(" ");
+
+                    String key = parts[1];
+                    String value =parts[2];
+                    map.put(key, value);
+                    System.out.println(map.get(key)+ " sssssssssssssssss");
+                    socket.getOutputStream().write("+OK\r\n".getBytes());
                 }
 
-                // Convert the client input to a string
-                String request = reader.readLine();
-                System.out.println("Received from client: " + request);
+            else if (request.startsWith("GET")) {
 
-                // Step 3: Parse the RESP command
-                String[] parts = request.split("\r\n");
-                if (parts.length >= 1 && parts[0].startsWith("*")) {
-                    // Handle RESP array commands
-                    if (parts[0].equals("*1") && parts[2].equalsIgnoreCase("$4") && parts[3].equalsIgnoreCase("PING")) {
-                        // Handle PING command
-                        String response = "+PONG\r\n"; // RESP simple string
-                        outputStream.write(response.getBytes());
-                        outputStream.flush();
-                        System.out.println("Sent response: " + response.trim());
-                        continue; // Skip the rest of the loop
-                    } else if (parts[0].equals("*2") && parts[2].equalsIgnoreCase("$4") && parts[3].equalsIgnoreCase("ECHO")) {
-                        // Handle ECHO command
-                        String argument = parts[5];
-                        String response = "$" + argument.length() + "\r\n" + argument + "\r\n"; // RESP bulk string
-                        outputStream.write(response.getBytes());
-                        outputStream.flush();
-                        System.out.println("Sent response: " + response.trim());
-                        continue; // Skip the rest of the loop
+                    String key = request.split(" ")[1];
+                    String value = map.get(key);
+                    if (value == null) {
+                        socket.getOutputStream().write("$-1\r\n".getBytes());
+                    } else {
+                        socket.getOutputStream().write(
+                                String.format("\r\n%s\r\n", value)
+                                        .getBytes());
                     }
                 }
-
-                // Step 4: Handle unknown commands
-                String response = "-ERR unknown command\r\n"; // RESP error
-                outputStream.write(response.getBytes());
-                outputStream.flush();
-                System.out.println("Sent response: " + response.trim());
             }
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());
-        } finally {
-            // Step 5: Close the streams and socket
-            try {
-                if (inputStream != null) {
-                    inputStream.close();
-                }
-                if (outputStream != null) {
-                    outputStream.close();
-                }
-                if (socket != null) {
-                    socket.close();
-                }
-            } catch (IOException e) {
-                System.out.println("IOException while closing resources: " + e.getMessage());
-            }
         }
     }
 }

@@ -26,11 +26,14 @@ public class ClientHandler implements Runnable {
                 if ("PING".equals(request)) {
                     socket.getOutputStream().write("+PONG\r\n".getBytes());
                 } else if ("ECHO".equalsIgnoreCase(request)) {
-                    input.readLine();
-                    String message = input.readLine();
+                    String echo = input.readLine();
+
+                    echo = input.readLine();
+
                     socket.getOutputStream().write(
-                            String.format("\r\n%s\r\n", message)
-                                    .getBytes());
+
+                            String.format("$%d\r\n%s\r\n", echo.length(), echo).getBytes());
+
                     socket.getOutputStream().flush();
                 } else if (request.startsWith("SET")) {
                     String key = input.readLine();

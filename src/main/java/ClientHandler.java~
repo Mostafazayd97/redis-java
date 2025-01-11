@@ -31,7 +31,7 @@ public class ClientHandler implements Runnable {
                     socket.getOutputStream().write(
                             String.format("\r\n%s\r\n", message)
                                     .getBytes());
-                    
+                    socket.getOutputStream().flush();
                 } else if (request.startsWith("SET")) {
                     String key = input.readLine();
 

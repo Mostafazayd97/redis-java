@@ -38,7 +38,7 @@ public class ClientHandler implements Runnable {
                     String key = parts[0];
                     String value = parts[1];
                     map.put(key, value);
-                    System.out.println(map.get(key)+ " sssssssssssssssss");
+                    System.out.println(map.get(key)+  " sssssssssssssssss");
                     socket.getOutputStream().write("+OK\r\n".getBytes());
                 }
 

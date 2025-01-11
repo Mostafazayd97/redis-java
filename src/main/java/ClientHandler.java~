@@ -34,9 +34,9 @@ public class ClientHandler implements Runnable {
                                     .getBytes());
                 }
             else if (request.startsWith("SET")) {
-                   String[] parts = request.split("\r\n");
-                    String key = parts[4];
-                    String value = parts[6];
+                   String[] parts = request.split(" ");
+                    String key = parts[0];
+                    String value = parts[1];
                     map.put(key, value);
                     System.out.println(map.get(key)+ " sssssssssssssssss");
                     socket.getOutputStream().write("+OK\r\n".getBytes());

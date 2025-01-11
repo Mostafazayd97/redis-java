@@ -50,17 +50,28 @@ public class ClientHandler implements Runnable {
                                         .getBytes());
                     }
                 } else if (request.startsWith("*")) {
-                    String[] parts = request.split("\\r\\n");
-                    if (parts.length > 0) {
-                        String key = parts[1];
-                        String value = parts[2];
-                        map.put(key, value);
-                        System.out.println(map.get(key) + " sssssssssssssssss");
-                        socket.getOutputStream().write("+OK\r\n".getBytes());
+                    try {
+                        BufferedReader input2 = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                        int arrayLength = Integer.parseInt(request.substring(1));
+                        input2.readLine();
+                        String command = input2.readLine();
+
+                        input.readLine(); // Read the length of the key (e.g., "$9")
+                        String key = input.readLine();
+                        input.readLine(); // Read the length of the value (e.g., "$6")
+                        String value = input.readLine();
+                        if ("SET".equals(command)) {
+                            map.put(key, value);
+                            System.out.println(map.get(key) + " sssssssssssssssss");
+                            socket.getOutputStream().write("+OK\r\n".getBytes());
+                        } else {
+                            socket.getOutputStream().write("-ERR unknown command\r\n".getBytes());
+                        }
+
+                    }catch (IOException e) {
+                        System.out.println("IOException: " + e.getMessage());
                     }
-
-
-                }
+                                    }
             }
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());

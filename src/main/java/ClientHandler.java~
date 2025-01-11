@@ -66,29 +66,5 @@ public class ClientHandler implements Runnable {
             System.out.println("IOException: " + e.getMessage());
         }
     }
-    private static String[] parseRESP2(BufferedReader input) throws IOException {
-        String line = input.readLine(); // Read the first line (e.g., "*3")
-        if (line == null || !line.startsWith("*")) {
-            throw new IllegalArgumentException("Invalid RESP2 format: expected array");
-        }
 
-        int arrayLength = Integer.parseInt(line.substring(1)); // Get the number of elements
-        if (arrayLength != 3) {
-            throw new IllegalArgumentException("Invalid RESP2 format: expected 3 elements");
-        }
-
-        // Read the command (e.g., "$3\r\nSET\r\n")
-        input.readLine(); // Read the length of the command (e.g., "$3")
-        String command = input.readLine(); // Read the command (e.g., "SET")
-
-        // Read the key (e.g., "$6\r\norange\r\n")
-        input.readLine(); // Read the length of the key (e.g., "$6")
-        String key = input.readLine(); // Read the key (e.g., "orange")
-
-        // Read the value (e.g., "$6\r\nbanana\r\n")
-        input.readLine(); // Read the length of the value (e.g., "$6")
-        String value = input.readLine(); // Read the value (e.g., "banana")
-
-        return new String[]{command, key, value};
-    }
 }

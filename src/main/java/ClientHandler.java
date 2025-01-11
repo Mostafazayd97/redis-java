@@ -1,9 +1,6 @@
 import java.io.BufferedReader;
-
 import java.io.IOException;
-
 import java.io.InputStreamReader;
-
 import java.net.Socket;
 import java.util.HashMap;
 
@@ -12,7 +9,9 @@ public class ClientHandler implements Runnable {
     private final Socket socket;
     public static HashMap<String, String> map = new HashMap<>();
 
-    public ClientHandler(Socket socket) { this.socket = socket; }
+    public ClientHandler(Socket socket) {
+        this.socket = socket;
+    }
 
     @Override
 
@@ -32,18 +31,15 @@ public class ClientHandler implements Runnable {
                     socket.getOutputStream().write(
                             String.format("\r\n%s\r\n", message)
                                     .getBytes());
-                }
-            else if (request.startsWith("SET")) {
+                } else if (request.startsWith("SET")) {
                     System.out.println(request + " request");
-                   String[] parts = request.split(" ");
+                    String[] parts = request.split(" ");
                     String key = parts[0];
                     String value = parts[1];
                     map.put(key, value);
-                    System.out.println(map.get(key)+  " sssssssssssssssss");
+                    System.out.println(map.get(key) + " sssssssssssssssss");
                     socket.getOutputStream().write("+OK\r\n".getBytes());
-                }
-
-            else if (request.startsWith("GET")) {
+                } else if (request.startsWith("GET")) {
                     String key = request.split(" ")[1];
                     String value = map.get(key);
                     if (value == null) {
@@ -55,11 +51,14 @@ public class ClientHandler implements Runnable {
                     }
                 } else if (request.startsWith("*")) {
                     String[] parts = request.split("\r\n");
-                    String key = parts[1];
-                    String value = parts[2];
-                    map.put(key, value);
-                    System.out.println(map.get(key)+  " sssssssssssssssss");
-                    socket.getOutputStream().write("+OK\r\n".getBytes());
+                    if (parts.length > 0) {
+                        String key = parts[1];
+                        String value = parts[2];
+                        map.put(key, value);
+                        System.out.println(map.get(key) + " sssssssssssssssss");
+                        socket.getOutputStream().write("+OK\r\n".getBytes());
+                    }
+               
 
                 }
             }

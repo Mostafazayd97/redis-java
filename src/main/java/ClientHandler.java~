@@ -64,6 +64,9 @@ class ClientHandler implements Runnable {
                         case "GET":
                             handleGet(elements[1], output);
                             break;
+                        case "ECHO":
+                            handleEcho(elements, output);
+                            break;
                         default:
                             output.write("-ERR Unknown command\r\n".getBytes());
                             break;

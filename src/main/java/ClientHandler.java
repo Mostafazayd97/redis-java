@@ -67,6 +67,9 @@ class ClientHandler implements Runnable {
                         case "ECHO":
                             handleEcho(elements, output);
                             break;
+                        case "PING":
+                            handlePing(output);
+                            break;
                         default:
                             output.write("-ERR Unknown command\r\n".getBytes());
                             break;
@@ -169,6 +172,10 @@ class ClientHandler implements Runnable {
     private void handleEcho(String[] elements, OutputStream output) throws IOException {
         String message = elements[1];
         output.write(String.format("$%d\r\n%s\r\n", message.length(), message).getBytes());
+    }
+
+    private void handlePing(OutputStream output) throws IOException {
+        output.write("+PONG\r\n".getBytes());
     }
 
 }

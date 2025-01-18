@@ -1,6 +1,4 @@
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Timer;
@@ -113,4 +111,42 @@ class ClientHandler implements Runnable {
         output.write(String.format("*2\r\n$%d\r\n%s\r\n$%d\r\n%s\r\n",
                 key.length(), key, value.length(), value).getBytes());
     }
+    
+    private void handleSet(String[] elements, OutputStream output) throws IOException {
+        if (elements.length < 3) {
+            output.write("-ERR Invalid SET command\r\n".getBytes());
+            return;
+        }
+
+        String key = elements[1];
+        String value = elements[2];
+
+        // Handle optional PX subcommand
+        if (elements.length >= 5 && "PX".equalsIgnoreCase(elements[3])) {
+            int ttl;
+            try {
+                ttl = Integer.parseInt(elements[4]); // Time-to-live in milliseconds
+            } catch (NumberFormatException e) {
+                output.write("-ERR Invalid expiration time\r\n".getBytes());
+                return;
+            }
+
+            // Schedule expiration
+            Timer timer = new Timer();
+            String finalKey = key.toLowerCase();
+            TimerTask task = new TimerTask() {
+                @Override
+                public void run() {
+                    map.remove(finalKey);
+                    System.out.println("Key expired: " + finalKey);
+                }
+            };
+            timer.schedule(task, ttl);
+        }
+
+        // Store the key-value pair
+        map.put(key.toLowerCase(), value);
+        output.write("+OK\r\n".getBytes()); // RESP OK response
+    }
+
 }

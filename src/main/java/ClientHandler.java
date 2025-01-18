@@ -33,33 +33,33 @@ public class ClientHandler implements Runnable {
                     socket.getOutputStream().write(
                             String.format("$%d\r\n%s\r\n", echo.length(), echo).getBytes());
                     socket.getOutputStream().flush();
-                } else if (request.startsWith("SET")) {
-                    String key = input.readLine();
-                    String value = input.readLine();
-                    String metCommand = input.readLine();
-                    if(!metCommand.isEmpty() && metCommand.equalsIgnoreCase("PX")){
-                        Integer time = Integer.parseInt(input.readLine());
+                }else if (request.startsWith("SET")) {
+                    String key = input.readLine(); // Read the key
+                    String value = input.readLine(); // Read the value
+                    String option = input.readLine(); // Read the option, e.g., "PX"
+
+                    if ("PX".equalsIgnoreCase(option)) {
+                        int time = Integer.parseInt(input.readLine()); // Read the expiration time in milliseconds
+
+                        // Schedule expiration
                         Timer timer = new Timer();
-                        String finalKey = key;
+                        String finalKey = key.toLowerCase();
                         TimerTask task = new TimerTask() {
                             @Override
                             public void run() {
                                 map.remove(finalKey);
-                                System.out.println(key+ " has been removed " + value);
-                                map
-                                        .entrySet().stream().forEach(entry -> System.out.println(entry.getKey() + " " + entry.getValue()));
-
                             }
                         };
                         timer.schedule(task, time);
                     }
-                    map.put(key.toLowerCase(), value);
-                    map
-                            .entrySet().stream().forEach(entry -> System.out.println(entry.getKey() + " " + entry.getValue()));
 
+                    map.put(key.toLowerCase(), value); // Store the key-value pair in the map
+
+                    // Respond with OK
                     socket.getOutputStream().write(
                             String.format("$%d\r\n%s\r\n", "OK".length(), "OK").getBytes());
                     socket.getOutputStream().flush();
+                
                 }  else if (request.startsWith("GET")) {
                     String key = input.readLine();
                     String value = map.get(key.toLowerCase());

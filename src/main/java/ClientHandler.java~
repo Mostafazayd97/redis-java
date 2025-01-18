@@ -45,7 +45,10 @@ public class ClientHandler implements Runnable {
                             @Override
                             public void run() {
                                 map.remove(finalKey);
-                                System.out.println(key+ " has been removed" + value);
+                                System.out.println(key+ " has been removed " + value);
+                                map
+                                        .entrySet().stream().forEach(entry -> System.out.println(entry.getKey() + " " + entry.getValue()));
+
                             }
                         };
                         timer.schedule(task, time);

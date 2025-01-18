@@ -6,127 +6,111 @@ import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class ClientHandler implements Runnable {
+class ClientHandler implements Runnable {
 
     private final Socket socket;
+    private final String dir;
+    private final String dbfilename;
     public static HashMap<String, String> map = new HashMap<>();
 
-    public ClientHandler(Socket socket) {
+    public ClientHandler(Socket socket, String dir, String dbfilename) {
         this.socket = socket;
+        this.dir = dir;
+        this.dbfilename = dbfilename;
     }
 
     @Override
     public void run() {
-        try (BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+        try (BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+             OutputStream output = socket.getOutputStream()) {
+
+            loadRDB();
+
             while (true) {
                 String request = input.readLine();
-                if (request == null) {
-                    continue;
-                }
+                if (request == null) continue;
 
-                if (request.startsWith("*")) { // RESP Array
-                    int numElements = Integer.parseInt(request.substring(1)); // Number of elements in the array
+                if (request.startsWith("*")) { // RESP parsing
+                    int numElements = Integer.parseInt(request.substring(1));
                     String[] elements = new String[numElements];
 
-                    // Parse RESP array elements
                     for (int i = 0; i < numElements; i++) {
-                        String lengthLine = input.readLine(); // e.g., "$10"
+                        String lengthLine = input.readLine();
                         if (!lengthLine.startsWith("$")) {
-                            throw new IOException("Invalid RESP format");
+                            output.write("-ERR Invalid RESP format\r\n".getBytes());
+                            output.flush();
+                            return;
                         }
-                        int length = Integer.parseInt(lengthLine.substring(1)); // Parse the length of the string
-                        elements[i] = input.readLine(); // Read the actual string
+                        int length = Integer.parseInt(lengthLine.substring(1));
+                        elements[i] = input.readLine();
                         if (elements[i].length() != length) {
-                            throw new IOException("Mismatched RESP length");
+                            output.write("-ERR RESP length mismatch\r\n".getBytes());
+                            output.flush();
+                            return;
                         }
                     }
 
-                    // Handle the command
-                    String command = elements[0].toUpperCase(); // Command name (e.g., SET, GET, etc.)
+                    String command = elements[0].toUpperCase();
+
                     switch (command) {
-                        case "SET": {
-                            handleSetCommand(elements);
-                            break;
-                        }
-                        case "GET": {
-                            handleGetCommand(elements);
-                            break;
-                        }
-                        case "PING": {
-                            socket.getOutputStream().write("+PONG\r\n".getBytes());
-                            socket.getOutputStream().flush();
-                            break;
-                        }
-                        case "ECHO": {
-                            if (elements.length >= 2) {
-                                String echoMessage = elements[1];
-                                socket.getOutputStream().write(
-                                        String.format("$%d\r\n%s\r\n", echoMessage.length(), echoMessage).getBytes());
-                                socket.getOutputStream().flush();
+                        case "CONFIG":
+                            if ("GET".equalsIgnoreCase(elements[1])) {
+                                handleConfigGet(elements[2], output);
                             } else {
-                                socket.getOutputStream().write("-ERR Missing argument for ECHO\r\n".getBytes());
+                                output.write("-ERR Unknown CONFIG subcommand\r\n".getBytes());
                             }
                             break;
-                        }
-                        default: {
-                            socket.getOutputStream().write("-ERR Unknown command\r\n".getBytes());
-                            socket.getOutputStream().flush();
+                        default:
+                            output.write("-ERR Unknown command\r\n".getBytes());
                             break;
-                        }
                     }
                 } else {
-                    socket.getOutputStream().write("-ERR Invalid protocol format\r\n".getBytes());
-                    socket.getOutputStream().flush();
+                    output.write("-ERR Invalid protocol format\r\n".getBytes());
                 }
+
+                output.flush();
             }
         } catch (IOException e) {
-            System.out.println("IOException: " + e.getMessage());
+            System.err.println("IOException: " + e.getMessage());
         }
     }
 
-    private void handleSetCommand(String[] elements) throws IOException {
-        if (elements.length < 3) {
-            socket.getOutputStream().write("-ERR Invalid SET command\r\n".getBytes());
+    private void handleConfigGet(String param, OutputStream output) throws IOException {
+        switch (param) {
+            case "dir":
+                respondAsRESPArray(output, "dir", dir);
+                break;
+            case "dbfilename":
+                respondAsRESPArray(output, "dbfilename", dbfilename);
+                break;
+            default:
+                output.write("-ERR Unknown configuration parameter\r\n".getBytes());
+        }
+    }
+
+    private void loadRDB() {
+        File rdbFile = new File(dir, dbfilename);
+        if (!rdbFile.exists()) {
+            System.out.println("No RDB file found. Starting with an empty dataset.");
             return;
         }
 
-        String key = elements[1];
-        String value = elements[2];
-
-        if (elements.length >= 5 && "PX".equalsIgnoreCase(elements[3])) {
-            int ttl = Integer.parseInt(elements[4]); // Time-to-live in milliseconds
-            Timer timer = new Timer();
-            String finalKey = key.toLowerCase();
-            TimerTask task = new TimerTask() {
-                @Override
-                public void run() {
-                    map.remove(finalKey);
-                    System.out.println("Key expired: " + finalKey);
+        try (BufferedReader reader = new BufferedReader(new FileReader(rdbFile))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] kv = line.split("=", 2);
+                if (kv.length == 2) {
+                    map.put(kv[0].toLowerCase(), kv[1]);
                 }
-            };
-            timer.schedule(task, ttl);
+            }
+            System.out.println("Data loaded from RDB file.");
+        } catch (IOException e) {
+            System.err.println("Failed to load RDB file: " + e.getMessage());
         }
-
-        map.put(key.toLowerCase(), value); // Store the key-value pair
-        socket.getOutputStream().write("+OK\r\n".getBytes()); // RESP OK response
-        socket.getOutputStream().flush();
     }
 
-    private void handleGetCommand(String[] elements) throws IOException {
-        if (elements.length < 2) {
-            socket.getOutputStream().write("-ERR Missing key for GET command\r\n".getBytes());
-            return;
-        }
-
-        String key = elements[1].toLowerCase();
-        String value = map.get(key);
-
-        if (value == null) {
-            socket.getOutputStream().write("$-1\r\n".getBytes()); // RESP Null Bulk String
-        } else {
-            socket.getOutputStream().write(
-                    String.format("$%d\r\n%s\r\n", value.length(), value).getBytes());
-        }
-        socket.getOutputStream().flush();
+    private void respondAsRESPArray(OutputStream output, String key, String value) throws IOException {
+        output.write(String.format("*2\r\n$%d\r\n%s\r\n$%d\r\n%s\r\n",
+                key.length(), key, value.length(), value).getBytes());
     }
 }

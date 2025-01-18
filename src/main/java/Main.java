@@ -7,32 +7,32 @@ import java.net.Socket;
 
 public class Main {
 
+    private static String dir = "/tmp/redis-data"; // Default directory
+    private static String dbfilename = "rdbfile"; // Default filename
+
     public static void main(String[] args) {
-        ServerSocket serverSocket = null;
-        int port = 6379;
-        try {
-            serverSocket = new ServerSocket(port);
-            serverSocket.setReuseAddress(true);
+        // Parse command-line arguments
+        for (int i = 0; i < args.length; i++) {
+            if ("--dir".equals(args[i]) && i + 1 < args.length) {
+                dir = args[i + 1];
+                i++;
+            } else if ("--dbfilename".equals(args[i]) && i + 1 < args.length) {
+                dbfilename = args[i + 1];
+                i++;
+            }
+        }
+
+        System.out.println("Starting Redis server with the following configuration:");
+        System.out.println("dir: " + dir);
+        System.out.println("dbfilename: " + dbfilename);
+
+        try (ServerSocket serverSocket = new ServerSocket(6379)) {
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                Thread clientHandler = new Thread(new ClientHandler(clientSocket));
-                clientHandler.start();
-
+                new Thread(new ClientHandler(clientSocket, dir, dbfilename)).start();
             }
-
-
-
-
         } catch (IOException e) {
-            System.out.println("IOException: " + e.getMessage());
-        } finally {
-            try {
-                if (serverSocket != null) {
-                    serverSocket.close();
-                }
-            } catch (IOException e) {
-                System.out.println("IOException: " + e.getMessage());
-            }
+            System.err.println("Server failed to start: " + e.getMessage());
         }
     }
 }

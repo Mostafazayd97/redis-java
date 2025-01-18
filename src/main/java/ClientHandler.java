@@ -1,18 +1,20 @@
 import java.io.*;
 import java.net.Socket;
 import java.util.HashMap;
+import java.util.Timer;
+import java.util.TimerTask;
 
-public class ClientHandler implements Runnable {
+class ClientHandler implements Runnable {
 
     private final Socket socket;
+    private final String dir;
+    private final String dbfilename;
     public static HashMap<String, String> map = new HashMap<>();
 
-    // Configuration parameters
-    private static String dir = "/tmp/redis-data";
-    private static String dbfilename = "rdbfile";
-
-    public ClientHandler(Socket socket) {
+    public ClientHandler(Socket socket, String dir, String dbfilename) {
         this.socket = socket;
+        this.dir = dir;
+        this.dbfilename = dbfilename;
     }
 
     @Override
@@ -20,7 +22,6 @@ public class ClientHandler implements Runnable {
         try (BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
              OutputStream output = socket.getOutputStream()) {
 
-            // Load dataset from RDB file on startup
             loadRDB();
 
             while (true) {
@@ -57,12 +58,6 @@ public class ClientHandler implements Runnable {
                                 output.write("-ERR Unknown CONFIG subcommand\r\n".getBytes());
                             }
                             break;
-                        case "SET":
-                            handleSet(elements, output);
-                            break;
-                        case "GET":
-                            handleGet(elements, output);
-                            break;
                         default:
                             output.write("-ERR Unknown command\r\n".getBytes());
                             break;
@@ -78,7 +73,6 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    // Handle CONFIG GET command
     private void handleConfigGet(String param, OutputStream output) throws IOException {
         switch (param) {
             case "dir":
@@ -92,38 +86,6 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    // Handle SET command
-    private void handleSet(String[] elements, OutputStream output) throws IOException {
-        if (elements.length < 3) {
-            output.write("-ERR Invalid SET command\r\n".getBytes());
-            return;
-        }
-
-        String key = elements[1];
-        String value = elements[2];
-        map.put(key.toLowerCase(), value);
-
-        output.write("+OK\r\n".getBytes());
-    }
-
-    // Handle GET command
-    private void handleGet(String[] elements, OutputStream output) throws IOException {
-        if (elements.length < 2) {
-            output.write("-ERR Missing key for GET command\r\n".getBytes());
-            return;
-        }
-
-        String key = elements[1].toLowerCase();
-        String value = map.get(key);
-
-        if (value == null) {
-            output.write("$-1\r\n".getBytes());
-        } else {
-            output.write(String.format("$%d\r\n%s\r\n", value.length(), value).getBytes());
-        }
-    }
-
-    // Load data from RDB file
     private void loadRDB() {
         File rdbFile = new File(dir, dbfilename);
         if (!rdbFile.exists()) {
@@ -145,22 +107,6 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    // Serialize data to RDB file
-    public static void saveRDB() {
-        File rdbFile = new File(dir, dbfilename);
-
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(rdbFile))) {
-            for (HashMap.Entry<String, String> entry : map.entrySet()) {
-                writer.write(entry.getKey() + "=" + entry.getValue());
-                writer.newLine();
-            }
-            System.out.println("Data saved to RDB file.");
-        } catch (IOException e) {
-            System.err.println("Failed to save RDB file: " + e.getMessage());
-        }
-    }
-
-    // Respond as RESP array
     private void respondAsRESPArray(OutputStream output, String key, String value) throws IOException {
         output.write(String.format("*2\r\n$%d\r\n%s\r\n$%d\r\n%s\r\n",
                 key.length(), key, value.length(), value).getBytes());

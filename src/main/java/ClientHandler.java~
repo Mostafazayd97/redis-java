@@ -58,6 +58,9 @@ class ClientHandler implements Runnable {
                                 output.write("-ERR Unknown CONFIG subcommand\r\n".getBytes());
                             }
                             break;
+                        case "SET":
+                            handleSet(elements, output);
+                            break;
                         default:
                             output.write("-ERR Unknown command\r\n".getBytes());
                             break;
@@ -111,7 +114,7 @@ class ClientHandler implements Runnable {
         output.write(String.format("*2\r\n$%d\r\n%s\r\n$%d\r\n%s\r\n",
                 key.length(), key, value.length(), value).getBytes());
     }
-    
+
     private void handleSet(String[] elements, OutputStream output) throws IOException {
         if (elements.length < 3) {
             output.write("-ERR Invalid SET command\r\n".getBytes());

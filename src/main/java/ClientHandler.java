@@ -115,6 +115,14 @@ class ClientHandler implements Runnable {
                 key.length(), key, value.length(), value).getBytes());
     }
 
+    private void handleGet(String key, OutputStream output) throws IOException {
+        String value = map.get(key.toLowerCase());
+        if (value == null) {
+            output.write("$-1\r\n".getBytes());
+        } else {
+            output.write(String.format("$%d\r\n%s\r\n", value.length(), value).getBytes());
+        }
+    }
     private void handleSet(String[] elements, OutputStream output) throws IOException {
         if (elements.length < 3) {
             output.write("-ERR Invalid SET command\r\n".getBytes());

@@ -163,4 +163,9 @@ class ClientHandler implements Runnable {
         output.write("+OK\r\n".getBytes()); // RESP OK response
     }
 
+    private void handleEcho(String[] elements, OutputStream output) throws IOException {
+        String message = elements[1];
+        output.write(String.format("$%d\r\n%s\r\n", message.length(), message).getBytes());
+    }
+
 }
